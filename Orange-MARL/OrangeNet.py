@@ -1,5 +1,5 @@
 import numpy as np
-
+np.random.seed(0)
 class nodes():
     
     def __init__(self,id_):

@@ -1,8 +1,10 @@
+#from lib2to3.pgen2.token import RPAR
+#import random
 import torch as T
 import torch.nn.functional as F
 from ddpg_agent import Agent
-import random
-
+import numpy as np
+np.random.seed(0)
 class MixAgent:
     def __init__(self, actor_dims, critic_dims, n_agents, n_actions,        
                  scenario='simple',  alpha=0.01, beta=0.01, fc1=64, 
@@ -12,10 +14,15 @@ class MixAgent:
         self.n_actions = n_actions
         chkpt_dir += scenario 
         for agent_idx in range(self.n_agents):
-            if random.random() < AI_rate:
-                self.agents.append(Agent(actor_dims[agent_idx], critic_dims,  n_actions, n_agents, agent_idx, alpha=alpha, beta=beta,trivial = False,fc1 = fc1,fc2 = fc2,chkpt_dir=chkpt_dir))
-            else:
-                self.agents.append(Agent(actor_dims[agent_idx], critic_dims,  n_actions, n_agents, agent_idx, alpha=alpha, beta=beta,trivial = True,fc1 = fc1,fc2 = fc2,chkpt_dir=chkpt_dir))
+            self.agents.append(Agent(actor_dims[agent_idx], critic_dims,  n_actions, n_agents, agent_idx, alpha=alpha, beta=beta,trivial = True,fc1 = fc1,fc2 = fc2,gamma = gamma,tau = tau,chkpt_dir=chkpt_dir))
+        for i in np.random.choice(self.n_agents, int(self.n_agents * AI_rate),replace=False):
+            self.agents[i].trivial = False
+            
+        # for agent_idx in range(self.n_agents):
+        #     if random.random() < AI_rate:
+        #         self.agents.append(Agent(actor_dims[agent_idx], critic_dims,  n_actions, n_agents, agent_idx, alpha=alpha, beta=beta,trivial = False,fc1 = fc1,fc2 = fc2,chkpt_dir=chkpt_dir))
+        #     else:
+        #         self.agents.append(Agent(actor_dims[agent_idx], critic_dims,  n_actions, n_agents, agent_idx, alpha=alpha, beta=beta,trivial = True,fc1 = fc1,fc2 = fc2,chkpt_dir=chkpt_dir))
 
     def save_checkpoint(self):
         print('... saving checkpoint ...')
@@ -27,10 +34,10 @@ class MixAgent:
         for agent in self.agents:
             agent.load_models()
 
-    def choose_action(self, raw_obs):
+    def choose_action(self, raw_obs,reward,act):
         actions = []
         for agent_idx, agent in enumerate(self.agents):
-            action = agent.choose_action(raw_obs[agent_idx])
+            action = agent.choose_action(raw_obs[agent_idx],reward[agent_idx],act[agent_idx])
             actions.append(action)
         return actions
 
@@ -77,7 +84,7 @@ class MixAgent:
             critic_value_ = agent.target_critic.forward(states_, new_actions).flatten()
             critic_value_[dones[:,0]] = 0.0
             critic_value = agent.critic.forward(states, old_actions).flatten()
-
+            
             target = rewards[:,agent_idx] + agent.gamma*critic_value_
             critic_loss = F.mse_loss(target.double(), critic_value.double())
             agent.critic.optimizer.zero_grad()

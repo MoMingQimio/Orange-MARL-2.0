@@ -43,7 +43,11 @@ class MultiAgentEnv():
         
             
         for i in range(self.n):
-            obs_ = np.array([action_n[self.world.Nodes[i].neighbor],reward_n[self.world.Nodes[i].neighbor]])
+            obs_ = np.array([
+                            action_n[self.world.Nodes[i].neighbor]
+                             ,reward_n[self.world.Nodes[i].neighbor]
+                             ]
+                            )
             obs_n.append(obs_.flatten())
         
         state = np.array([action_n, reward_n],
@@ -81,12 +85,11 @@ class MultiAgentEnv():
         
         for i in range(self.n):
             
-            
             obs_ = np.array([
                             action_n[self.world.Nodes[i].neighbor]
                              ,reward_n[self.world.Nodes[i].neighbor]
                              ]
-                            )#.astype(np.float32)
+                            )
             obs_n.append(obs_.flatten())
 
         state =np.array([action_n, reward_n]).flatten()

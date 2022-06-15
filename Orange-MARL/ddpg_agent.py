@@ -5,9 +5,10 @@ class Agent:
     def __init__(self, actor_dims, critic_dims, n_actions, n_agents, agent_idx, chkpt_dir,trivial,
                     alpha=0.01, beta=0.01, fc1=64, 
                     fc2=64, gamma=0.95, tau=0.01):
-        self.trivial = trivial
-        self.gamma = gamma
-        self.tau = tau
+        self.trivial = trivial  #True or False. If ture, the updating rule will be changed.
+        self.gamma = gamma #dqn
+        self.tau = tau#MADDPG软更新的步长
+        self.id = agent_idx
         self.n_actions = n_actions
         self.agent_name = 'agent_%s' % agent_idx
         self.actor = ActorNetwork(alpha, actor_dims, fc1, fc2, n_actions, 
@@ -23,24 +24,38 @@ class Agent:
                                             chkpt_dir=chkpt_dir,
                                             name=self.agent_name+'_target_critic')
 
-        self.update_network_parameters(tau=1)
+        self.update_network_parameters(tau=1)#保证一开始的时候两种网络的参数保持一致
         
         
-    def choose_action(self, observation):
+    def choose_action(self, observation,rewards,act):
         if self.trivial:
             """
             waiting for adjustment!!!!!!!!!!!!!!!
             """  
+            actions = 0
             obs = observation.reshape(2,-1)
-            actions = obs[0,np.argmax( obs[1,:])]
+            j = np.random.choice(np.arange(1,obs.shape[1]))
+            temp = 1 / (1+ np.exp(rewards - obs[1,j]) *2) 
+            if np.random.rand() < temp:
+                actions = obs[0,j]
+            else:
+                actions = act[0]
+            
             ACTIONS = np.array([actions, 1-actions])
+            # obs = observation.reshape(2,-1)
+            # actions = obs[0,np.argmax( obs[1,:])]
+            # ACTIONS = np.array([actions, 1-actions])
             
          
         else:
-            state = T.tensor([observation], dtype=T.float).to(self.actor.device)
+            obs = observation.reshape(2,-1)
+            obs = obs[:, 1:]
+            state = T.tensor([obs], dtype=T.float).to(self.actor.device).reshape(-1)
+            
             actions = self.actor.forward(state)
             # noise = T.rand(self.n_actions).to(self.actor.device)
             # action = actions + noise
+            #原本计划加入随机噪声，后来有bug
             ACTIONS = actions.detach().cpu().numpy().flatten()
         
         return ACTIONS
